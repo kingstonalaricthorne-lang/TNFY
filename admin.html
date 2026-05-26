@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TNYF — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f5f5;
+      color: #111;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+    .topbar {
+      background: #000;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .topbar h1 { font-size: 18px; letter-spacing: 0.16em; font-weight: 700; }
+    .topbar .user { font-size: 13px; opacity: 0.7; }
+    .topbar button {
+      background: none; border: 1px solid #444; color: #fff;
+      padding: 6px 14px; font-size: 12px; cursor: pointer; letter-spacing: 0.08em;
+    }
+    .topbar button:hover { border-color: #fff; }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #fff; border-radius: 4px; padding: 20px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .card h2 {
+      font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
+      margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #eee;
+    }
+    label { display: block; font-size: 12px; color: #555; margin: 10px 0 4px; letter-spacing: 0.04em; }
+    input, textarea, select {
+      width: 100%; padding: 9px 11px; border: 1px solid #ddd;
+      font: inherit; font-size: 13px; background: #fff; border-radius: 3px;
+    }
+    input:focus, textarea:focus, select:focus { outline: 1px solid #000; border-color: #000; }
+    textarea { resize: vertical; min-height: 60px; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn {
+      background: #000; color: #fff; border: none; padding: 10px 18px;
+      font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: pointer; margin-top: 14px; border-radius: 2px;
+    }
+    .btn:hover { background: #333; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; margin-top: 0; }
+    .btn-danger { background: #c00; }
+    .btn-secondary { background: #eee; color: #111; }
+
+    .alert { padding: 10px 12px; margin: 10px 0; font-size: 13px; border-radius: 3px; }
+    .alert-error { background: #fee; color: #800; border-left: 3px solid #c00; }
+    .alert-ok { background: #e8f5e9; color: #1b5e20; border-left: 3px solid #2e7d32; }
+
+    .table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+    .table th, .table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; }
+    .table th { font-weight: 600; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #666; }
+    .table td .row-actions { display: flex; gap: 6px; }
+
+    .login-wrap {
+      display: flex; align-items: center; justify-content: center; min-height: 80vh;
+    }
+    .login-card { max-width: 360px; width: 100%; }
+
+    #adminApp { display: none; }
+    .hidden { display: none !important; }
+
+    .pill {
+      display: inline-block; padding: 2px 8px; font-size: 11px; border-radius: 999px;
+      background: #eee; color: #555;
+    }
+    .pill-success { background: #e8f5e9; color: #2e7d32; }
+    .pill-danger  { background: #ffebee; color: #c62828; }
+
+    .full-width { grid-column: 1 / -1; }
+    .small { font-size: 11px; color: #888; margin-top: 4px; }
+    code { background: #f5f5f5; padding: 1px 5px; border-radius: 2px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h1>TNYF · ADMIN</h1>
+    <div>
+      <span class="user" id="userBadge"></span>
+      <button id="logoutBtn" class="hidden">Logout</button>
+    </div>
+  </div>
+
+  <!-- Login -->
+  <div id="loginScreen" class="login-wrap">
+    <div class="card login-card">
+      <h2>Admin Login</h2>
+      <div id="loginAlert"></div>
+      <label>Email</label>
+      <input id="loginEmail" type="email" value="admin@tnyf.com" />
+      <label>Password</label>
+      <input id="loginPass" type="password" value="Admin@1234" />
+      <button class="btn" id="loginBtn" style="width:100%;">Sign in</button>
+      <p class="small">Default seed credentials are pre-filled.</p>
+    </div>
+  </div>
+
+  <!-- Admin -->
+  <main id="adminApp">
+
+    <div class="grid">
+
+      <!-- Create Product -->
+      <section class="card">
+        <h2>Create Product</h2>
+        <div id="prodAlert"></div>
+
+        <label>Name</label>
+        <input id="prodName" placeholder="Oversized Crewneck" />
+
+        <label>Slug (URL)</label>
+        <input id="prodSlug" placeholder="oversized-crewneck" />
+        <p class="small">Lowercase letters, numbers, hyphens.</p>
+
+        <label>Description</label>
+        <textarea id="prodDesc" placeholder="Boxy fit, heavyweight cotton..."></textarea>
+
+        <div class="row">
+          <div>
+            <label>Gender</label>
+            <select id="prodGender">
+              <option value="womens">Womens</option>
+              <option value="mens">Mens</option>
+              <option value="unisex">Unisex</option>
+            </select>
+          </div>
+          <div>
+            <label>Brand</label>
+            <select id="prodBrand"></select>
+          </div>
+        </div>
+
+        <label>Category</label>
+        <select id="prodCategory"></select>
+
+        <div class="row">
+          <div>
+            <label>Base Price ($)</label>
+            <input id="prodPrice" type="number" step="0.01" placeholder="68.00" />
+          </div>
+          <div>
+            <label>Sale Price ($) — optional</label>
+            <input id="prodSale" type="number" step="0.01" placeholder="44.00" />
+          </div>
+        </div>
+
+        <label>Tags (comma-separated)</label>
+        <input id="prodTags" placeholder="cotton, oversized, new" />
+
+        <div class="row">
+          <div>
+            <label><input type="checkbox" id="prodFeatured" /> Featured</label>
+            <label><input type="checkbox" id="prodNew" checked /> New</label>
+          </div>
+          <div>
+            <label><input type="checkbox" id="prodActive" checked /> Active</label>
+          </div>
+        </div>
+
+        <button class="btn" id="createProductBtn">Create Product</button>
+      </section>
+
+      <!-- Variants & Images for selected product -->
+      <section class="card">
+        <h2>Variants &amp; Images</h2>
+        <p class="small" style="margin-bottom: 10px;">
+          Select a product below to add variants &amp; images.
+        </p>
+
+        <label>Selected product</label>
+        <select id="targetProduct"></select>
+
+        <div id="targetAlert"></div>
+
+        <h2 style="margin-top:22px;">Add Variant</h2>
+        <div class="row">
+          <div>
+            <label>Size</label>
+            <input id="varSize" placeholder="M" />
+          </div>
+          <div>
+            <label>Colour</label>
+            <input id="varColor" placeholder="Black" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Hex (optional)</label>
+            <input id="varHex" placeholder="#000000" />
+          </div>
+          <div>
+            <label>Stock Qty</label>
+            <input id="varStock" type="number" value="10" />
+          </div>
+        </div>
+        <label>SKU (optional)</label>
+        <input id="varSku" placeholder="OVC-BLK-M" />
+        <button class="btn btn-sm" id="addVariantBtn">+ Add Variant</button>
+
+        <h2 style="margin-top:22px;">Add Image</h2>
+        <label>Image URL</label>
+        <input id="imgUrl" placeholder="https://example.com/photo.jpg" />
+        <div class="row">
+          <div>
+            <label>Alt Text</label>
+            <input id="imgAlt" placeholder="Front view" />
+          </div>
+          <div>
+            <label>Sort Order</label>
+            <input id="imgOrder" type="number" value="0" />
+          </div>
+        </div>
+        <label><input type="checkbox" id="imgPrimary" /> Mark as primary</label>
+        <button class="btn btn-sm" id="addImageBtn">+ Add Image</button>
+      </section>
+
+      <!-- Product List -->
+      <section class="card full-width">
+        <h2>All Products <span id="prodCount" class="pill"></span></h2>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Slug</th>
+              <th>Gender</th>
+              <th>Base Price</th>
+              <th>Sale</th>
+              <th>Active</th>
+              <th>Variants</th>
+              <th>Images</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="prodTableBody">
+            <tr><td colspan="9" style="text-align:center;padding:20px;color:#888;">Loading…</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script>
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    const $ = (s) => document.querySelector(s);
+    function alert(host, type, msg) {
+      host.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+      if (type === 'ok') setTimeout(() => (host.innerHTML = ''), 3000);
+    }
+    function slugify(s) {
+      return (s || '').toLowerCase().trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+    }
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let me = null;
+    let brands = [];
+    let categories = []; // flattened including children
+
+    // ── Auth Flow ────────────────────────────────────────────────────────────
+    async function tryAutoLogin() {
+      if (!window.api.isLoggedIn()) return false;
+      try {
+        const r = await window.api.me();
+        me = r.data;
+        if (me?.role !== 'admin') { window.api.clearToken(); return false; }
+        return true;
+      } catch { window.api.clearToken(); return false; }
+    }
+
+    function showApp() {
+      $('#loginScreen').style.display = 'none';
+      $('#adminApp').style.display = 'block';
+      $('#userBadge').textContent = me?.email || '';
+      $('#logoutBtn').classList.remove('hidden');
+      bootstrap();
+    }
+    function showLogin() {
+      $('#loginScreen').style.display = 'flex';
+      $('#adminApp').style.display = 'none';
+      $('#logoutBtn').classList.add('hidden');
+      $('#userBadge').textContent = '';
+    }
+
+    $('#loginBtn').addEventListener('click', async () => {
+      const email = $('#loginEmail').value.trim();
+      const pass  = $('#loginPass').value;
+      try {
+        me = await window.api.login(email, pass);
+        if (me?.role !== 'admin') {
+          window.api.clearToken();
+          alert($('#loginAlert'), 'error', 'This account is not an admin.');
+          return;
+        }
+        showApp();
+      } catch (e) {
+        alert($('#loginAlert'), 'error', e.message || 'Login failed');
+      }
+    });
+
+    $('#logoutBtn').addEventListener('click', async () => {
+      try { await window.api.logout(); } finally { me = null; showLogin(); }
+    });
+
+    // ── Bootstrap: load brands, categories, products ────────────────────────
+    async function bootstrap() {
+      try {
+        const [b, c, p] = await Promise.all([
+          window.api.brands(),
+          window.api.categories(),
+          window.api.products({ limit: 100 }),
+        ]);
+        brands = b.data || [];
+
+        // Flatten categories (root + children)
+        const flat = [];
+        (c.data || []).forEach(root => {
+          flat.push(root);
+          (root.children || []).forEach(child => flat.push({ ...child, name: `${root.name} → ${child.name}` }));
+        });
+        categories = flat;
+
+        populateSelects();
+        renderProductTable(p.items || []);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function populateSelects() {
+      const bs = brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+      $('#prodBrand').innerHTML = bs;
+
+      const cs = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+      $('#prodCategory').innerHTML = cs;
+    }
+
+    // ── Product create ──────────────────────────────────────────────────────
+    $('#prodName').addEventListener('input', () => {
+      if (!$('#prodSlug').dataset.touched) $('#prodSlug').value = slugify($('#prodName').value);
+    });
+    $('#prodSlug').addEventListener('input', () => { $('#prodSlug').dataset.touched = '1'; });
+
+    $('#createProductBtn').addEventListener('click', async () => {
+      const body = {
+        name:        $('#prodName').value.trim(),
+        slug:        $('#prodSlug').value.trim(),
+        description: $('#prodDesc').value.trim() || null,
+        gender:      $('#prodGender').value,
+        brandId:     $('#prodBrand').value || null,
+        categoryId:  $('#prodCategory').value || null,
+        basePrice:   parseFloat($('#prodPrice').value),
+        salePrice:   $('#prodSale').value ? parseFloat($('#prodSale').value) : null,
+        tags:        $('#prodTags').value.split(',').map(s => s.trim()).filter(Boolean),
+        isFeatured:  $('#prodFeatured').checked,
+        isNew:       $('#prodNew').checked,
+        isActive:    $('#prodActive').checked,
+      };
+      // Calculate discountPct if salePrice set
+      if (body.salePrice != null && body.basePrice > 0) {
+        body.discountPct = Math.round((1 - body.salePrice / body.basePrice) * 100);
+      }
+      if (!body.name || !body.slug || !body.basePrice) {
+        alert($('#prodAlert'), 'error', 'Name, slug and base price are required.');
+        return;
+      }
+      try {
+        const r = await window.api.post('/api/products', body);
+        alert($('#prodAlert'), 'ok', `Created: ${r.data.name}`);
+        ['prodName','prodSlug','prodDesc','prodPrice','prodSale','prodTags'].forEach(id => $('#' + id).value = '');
+        delete $('#prodSlug').dataset.touched;
+        const p = await window.api.products({ limit: 100 });
+        renderProductTable(p.items || []);
+      } catch (e) {
+        alert($('#prodAlert'), 'error', e.message || 'Failed to create product');
+      }
+    });
+
+    // ── Variant add ─────────────────────────────────────────────────────────
+    $('#addVariantBtn').addEventListener('click', async () => {
+      const productId = $('#targetProduct').value;
+      if (!productId) {
+        alert($('#targetAlert'), 'error', 'Select a product first');
+        return;
+      }
+      const body = {
+        size:     $('#varSize').value.trim() || null,
+        color:    $('#varColor').value.trim() || null,
+        colorHex: $('#varHex').value.trim() || null,
+        stockQty: parseInt($('#varStock').value, 10) || 0,
+        sku:      $('#varSku').value.trim() || null,
+      };
+      try {
+        await window.api.post(`/api/products/${productId}/variants`, body);
+        alert($('#targetAlert'), 'ok', `Variant added: ${body.color || ''} ${body.size || ''}`);
+        ['varSize','varColor','varHex','varSku'].forEach(id => $('#' + id).value = '');
+        $('#varStock').value = 10;
+        const p = await window.api.products({ limit: 100 });
+        renderProductTable(p.items || []);
+      } catch (e) {
+        alert($('#targetAlert'), 'error', e.message || 'Failed to add variant');
+      }
+    });
+
+    // ── Image add ───────────────────────────────────────────────────────────
+    $('#addImageBtn').addEventListener('click', async () => {
+      const productId = $('#targetProduct').value;
+      if (!productId) {
+        alert($('#targetAlert'), 'error', 'Select a product first');
+        return;
+      }
+      const body = {
+        url:       $('#imgUrl').value.trim(),
+        altText:   $('#imgAlt').value.trim() || null,
+        sortOrder: parseInt($('#imgOrder').value, 10) || 0,
+        isPrimary: $('#imgPrimary').checked,
+      };
+      if (!body.url) {
+        alert($('#targetAlert'), 'error', 'Image URL is required');
+        return;
+      }
+      try {
+        await window.api.post(`/api/products/${productId}/images`, body);
+        alert($('#targetAlert'), 'ok', 'Image added');
+        ['imgUrl','imgAlt'].forEach(id => $('#' + id).value = '');
+        $('#imgOrder').value = 0;
+        $('#imgPrimary').checked = false;
+        const p = await window.api.products({ limit: 100 });
+        renderProductTable(p.items || []);
+      } catch (e) {
+        alert($('#targetAlert'), 'error', e.message || 'Failed to add image');
+      }
+    });
+
+    // ── Product table ───────────────────────────────────────────────────────
+    function renderProductTable(items) {
+      $('#prodCount').textContent = items.length;
+
+      if (items.length === 0) {
+        $('#prodTableBody').innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:#888;">No products yet. Create one above ↑</td></tr>`;
+        $('#targetProduct').innerHTML = '<option value="">— No products —</option>';
+        return;
+      }
+
+      $('#targetProduct').innerHTML = items.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
+      $('#prodTableBody').innerHTML = items.map(p => {
+        const variantsCount = Array.isArray(p.variants) ? p.variants.length : '—';
+        const imagesCount = Array.isArray(p.images) ? p.images.length : 0;
+        return `
+          <tr>
+            <td><strong>${p.name}</strong></td>
+            <td><a href="product.html?slug=${encodeURIComponent(p.slug)}" target="_blank">${p.slug}</a></td>
+            <td>${p.gender || ''}</td>
+            <td>$${Number(p.basePrice).toFixed(2)}</td>
+            <td>${p.salePrice != null ? `$${Number(p.salePrice).toFixed(2)}` : '—'}</td>
+            <td>${p.isActive ? '<span class="pill pill-success">active</span>' : '<span class="pill pill-danger">hidden</span>'}</td>
+            <td>${variantsCount}</td>
+            <td>${imagesCount}</td>
+            <td class="row-actions">
+              <button class="btn btn-sm btn-secondary" data-act="select" data-id="${p.id}">Select</button>
+              <button class="btn btn-sm btn-danger" data-act="delete" data-id="${p.id}" data-name="${p.name}">Delete</button>
+            </td>
+          </tr>`;
+      }).join('');
+
+      $('#prodTableBody').querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          if (btn.dataset.act === 'select') {
+            $('#targetProduct').value = id;
+            $('#targetProduct').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if (btn.dataset.act === 'delete') {
+            if (!confirm(`Delete "${btn.dataset.name}"? This cannot be undone.`)) return;
+            try {
+              await window.api.del(`/api/products/${id}`);
+              const p = await window.api.products({ limit: 100 });
+              renderProductTable(p.items || []);
+            } catch (e) {
+              window.alert(e.message || 'Delete failed');
+            }
+          }
+        });
+      });
+    }
+
+    // ── Init ────────────────────────────────────────────────────────────────
+    (async () => {
+      const ok = await tryAutoLogin();
+      if (ok) showApp();
+      else showLogin();
+    })();
+  </script>
+</body>
+</html>
