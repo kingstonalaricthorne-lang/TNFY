@@ -10,41 +10,41 @@ datasource db {
 // ─── Users & Addresses ───────────────────────────────────────────────────────
 
 model User {
-  id           String     @id @default(uuid()) @db.Uuid
-  name         String     @db.VarChar(100)
-  email        String     @unique @db.VarChar(150)
-  passwordHash String     @map("password_hash")
-  role         String     @default("customer") @db.VarChar(20)
-  gender       String?    @db.VarChar(10)
-  phone        String?    @db.VarChar(20)
-  avatarUrl    String?    @map("avatar_url")
-  isVerified   Boolean    @default(false) @map("is_verified")
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(100)
+  email        String   @unique @db.VarChar(150)
+  passwordHash String   @map("password_hash")
+  role         String   @default("customer") @db.VarChar(20)
+  gender       String?  @db.VarChar(10)
+  phone        String?  @db.VarChar(20)
+  avatarUrl    String?  @map("avatar_url")
+  isVerified   Boolean  @default(false) @map("is_verified")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  addresses    Address[]
-  orders       Order[]
-  carts        Cart[]
-  reviews      Review[]
-  wishlist     Wishlist[]
+  addresses Address[]
+  orders    Order[]
+  carts     Cart[]
+  reviews   Review[]
+  wishlist  Wishlist[]
 
   @@map("users")
 }
 
 model Address {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName  String?  @map("full_name") @db.VarChar(100)
+  id        String  @id @default(uuid()) @db.Uuid
+  userId    String  @map("user_id") @db.Uuid
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName  String? @map("full_name") @db.VarChar(100)
   line1     String
   line2     String?
-  city      String?  @db.VarChar(100)
-  state     String?  @db.VarChar(100)
-  postcode  String?  @db.VarChar(20)
-  country   String   @default("US") @db.VarChar(60)
-  isDefault Boolean  @default(false) @map("is_default")
+  city      String? @db.VarChar(100)
+  state     String? @db.VarChar(100)
+  postcode  String? @db.VarChar(20)
+  country   String  @default("US") @db.VarChar(60)
+  isDefault Boolean @default(false) @map("is_default")
 
-  orders    Order[]
+  orders Order[]
 
   @@index([userId])
   @@map("addresses")
@@ -53,62 +53,62 @@ model Address {
 // ─── Catalog ─────────────────────────────────────────────────────────────────
 
 model Brand {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @unique @db.VarChar(100)
-  slug        String    @unique @db.VarChar(120)
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(120)
   description String?
-  logoUrl     String?   @map("logo_url")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  logoUrl     String?  @map("logo_url")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  products    Product[]
+  products Product[]
 
   @@map("brands")
 }
 
 model Category {
-  id         String     @id @default(uuid()) @db.Uuid
-  name       String     @db.VarChar(100)
-  slug       String     @unique @db.VarChar(120)
-  gender     String     @db.VarChar(10)
-  parentId   String?    @map("parent_id") @db.Uuid
-  parent     Category?  @relation("CategoryTree", fields: [parentId], references: [id])
-  children   Category[] @relation("CategoryTree")
-  imageUrl   String?    @map("image_url")
-  sortOrder  Int        @default(0) @map("sort_order")
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String     @db.VarChar(100)
+  slug      String     @unique @db.VarChar(120)
+  gender    String     @db.VarChar(10)
+  parentId  String?    @map("parent_id") @db.Uuid
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  imageUrl  String?    @map("image_url")
+  sortOrder Int        @default(0) @map("sort_order")
 
-  products   Product[]
+  products Product[]
 
   @@index([parentId])
   @@map("categories")
 }
 
 model Product {
-  id               String   @id @default(uuid()) @db.Uuid
-  name             String   @db.VarChar(255)
-  slug             String   @unique @db.VarChar(300)
+  id               String    @id @default(uuid()) @db.Uuid
+  name             String    @db.VarChar(255)
+  slug             String    @unique @db.VarChar(300)
   description      String?
-  brandId          String?  @map("brand_id") @db.Uuid
-  brand            Brand?   @relation(fields: [brandId], references: [id])
-  categoryId       String?  @map("category_id") @db.Uuid
+  brandId          String?   @map("brand_id") @db.Uuid
+  brand            Brand?    @relation(fields: [brandId], references: [id])
+  categoryId       String?   @map("category_id") @db.Uuid
   category         Category? @relation(fields: [categoryId], references: [id])
-  gender           String   @db.VarChar(10)
-  basePrice        Decimal  @map("base_price") @db.Decimal(10, 2)
-  salePrice        Decimal? @map("sale_price") @db.Decimal(10, 2)
-  discountPct      Int?     @map("discount_pct")
-  stockTotal       Int      @default(0) @map("stock_total")
-  isActive         Boolean  @default(true) @map("is_active")
-  isFeatured       Boolean  @default(false) @map("is_featured")
-  isNew            Boolean  @default(false) @map("is_new")
+  gender           String    @db.VarChar(10)
+  basePrice        Decimal   @map("base_price") @db.Decimal(10, 2)
+  salePrice        Decimal?  @map("sale_price") @db.Decimal(10, 2)
+  discountPct      Int?      @map("discount_pct")
+  stockTotal       Int       @default(0) @map("stock_total")
+  isActive         Boolean   @default(true) @map("is_active")
+  isFeatured       Boolean   @default(false) @map("is_featured")
+  isNew            Boolean   @default(false) @map("is_new")
   tags             String[]
   material         String?
-  careInstructions String?  @map("care_instructions")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  careInstructions String?   @map("care_instructions")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  variants   ProductVariant[]
-  images     ProductImage[]
-  reviews    Review[]
-  wishlist   Wishlist[]
+  variants ProductVariant[]
+  images   ProductImage[]
+  reviews  Review[]
+  wishlist Wishlist[]
 
   @@index([categoryId])
   @@index([brandId])
@@ -155,7 +155,7 @@ model Cart {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  items     CartItem[]
+  items CartItem[]
 
   @@index([userId])
   @@index([sessionId])
@@ -205,7 +205,7 @@ model Coupon {
   expiresAt     DateTime? @map("expires_at")
   createdAt     DateTime  @default(now()) @map("created_at")
 
-  orders        Order[]
+  orders Order[]
 
   @@map("coupons")
 }
@@ -232,7 +232,7 @@ model Order {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  items          OrderItem[]
+  items OrderItem[]
 
   @@index([userId])
   @@map("orders")
