@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend syntax & schema checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Prisma schema
+        run: npx prisma format --check
+        # Fails if schema.prisma has formatting/syntax issues.
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        # Catches schema errors that only surface at codegen.
+
+      - name: Syntax-check all backend JS files
+        run: |
+          # node --check returns non-zero on parse errors.
+          # We exclude node_modules; everything else under src/, prisma/, server.js.
+          find . -type f -name '*.js' \
+            -not -path './node_modules/*' \
+            -print0 \
+            | xargs -0 -n1 node --check
+
+      - name: Smoke-test env schema (against .env.example)
+        run: |
+          # Copy the example into a real .env with dummy-but-valid values so the
+          # Zod env validator runs without crashing on missing keys. We don't
+          # actually start the server — just import the env module.
+          cp .env.example .env
+          # Patch placeholders so Zod patterns pass (sk_, whsec_, pk_, SG., URL).
+          node -e "
+            const fs=require('fs');
+            let e=fs.readFileSync('.env','utf8');
+            e=e.replace('replace-with-a-strong-random-secret-min-32-chars','x'.repeat(40));
+            e=e.replace('postgresql://USER:PASSWORD@localhost:5432/tnyf_db?schema=public','postgresql://u:p@localhost:5432/db');
+            fs.writeFileSync('.env',e);
+          "
+          node -e "require('./src/config/env')"
+
+      - name: Smoke-test that the app module loads
+        run: |
+          # Importing src/app.js exercises every require() — surfaces any
+          # missing module or top-level crash before deploy.
+          node -e "require('./src/app')"
+        env:
+          # Disable rate limit during import (memorystore would otherwise warn).
+          NODE_ENV: test
+
+  frontend:
+    name: Frontend lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Syntax-check all root-level JS files
+        run: |
+          # Vanilla browser JS uses globals (no require/import yet) so node --check
+          # is permissive enough to catch parse errors without needing a build.
+          for f in *.js js/*.js; do
+            [ -f "$f" ] && node --check "$f"
+          done
+
+      - name: Validate HTML files are non-empty and well-formed enough
+        run: |
+          # Lightweight smoke: each HTML must contain <html and </html>.
+          for f in *.html; do
+            grep -q '<html' "$f" || { echo "❌ $f missing <html"; exit 1; }
+            grep -q '</html>' "$f" || { echo "❌ $f missing </html>"; exit 1; }
+          done
+          echo "✓ HTML files look sane"
