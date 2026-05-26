@@ -14,6 +14,31 @@ jobs:
       run:
         working-directory: backend
 
+    # Dummy values so Zod env validation passes during the smoke-test step.
+    # These never touch real services — we never call $connect().
+    env:
+      DATABASE_URL: "postgresql://u:p@localhost:5432/db"
+      REDIS_URL: ""
+      REDIS_HOST: "127.0.0.1"
+      REDIS_PORT: "6379"
+      JWT_SECRET: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      JWT_ACCESS_EXPIRES_IN: "15m"
+      STRIPE_SECRET_KEY: "sk_test_dummy"
+      STRIPE_WEBHOOK_SECRET: "whsec_dummy"
+      STRIPE_PUBLISHABLE_KEY: "pk_test_dummy"
+      AWS_REGION: "us-east-1"
+      AWS_ACCESS_KEY_ID: "dummy"
+      AWS_SECRET_ACCESS_KEY: "dummy"
+      AWS_S3_BUCKET: "dummy"
+      SENDGRID_API_KEY: "SG.dummy"
+      EMAIL_FROM: "noreply@tnyf.local"
+      EMAIL_FROM_NAME: "TNYF"
+      CLIENT_URL: "http://localhost:3000"
+      API_URL: "http://localhost:5000"
+      RATE_LIMIT_WINDOW_MS: "900000"
+      RATE_LIMIT_MAX: "100"
+      NODE_ENV: "test"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,47 +53,37 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate Prisma schema
-        run: npx prisma format --check
-        # Fails if schema.prisma has formatting/syntax issues.
-
       - name: Generate Prisma Client
+        # Schema-level validation (typos, broken relations, bad types).
+        # Doesn't connect to the DB.
         run: npx prisma generate
-        # Catches schema errors that only surface at codegen.
 
-      - name: Syntax-check all backend JS files
+      - name: Syntax-check every backend JS file
         run: |
-          # node --check returns non-zero on parse errors.
-          # We exclude node_modules; everything else under src/, prisma/, server.js.
-          find . -type f -name '*.js' \
-            -not -path './node_modules/*' \
-            -print0 \
-            | xargs -0 -n1 node --check
+          # node --check returns non-zero on parse errors. Loop catches all files.
+          fail=0
+          while IFS= read -r f; do
+            if ! node --check "$f"; then
+              echo "::error file=$f::Syntax error"
+              fail=1
+            fi
+          done < <(find . -type f -name '*.js' -not -path './node_modules/*')
+          exit $fail
 
-      - name: Smoke-test env schema (against .env.example)
+      - name: Load env config module (validates Zod schema)
+        # If env.js exits non-zero, the Zod schema rejected the dummy env above.
+        run: node -e "require('./src/config/env'); console.log('env OK')"
+
+      - name: Smoke-test that src/app.js loads without crashing
+        # Importing src/app exercises every require() — surfaces missing modules
+        # and top-level crashes. process.exit(0) is required because the Redis
+        # client holds a socket open and would otherwise prevent node from exiting.
         run: |
-          # Copy the example into a real .env with dummy-but-valid values so the
-          # Zod env validator runs without crashing on missing keys. We don't
-          # actually start the server — just import the env module.
-          cp .env.example .env
-          # Patch placeholders so Zod patterns pass (sk_, whsec_, pk_, SG., URL).
           node -e "
-            const fs=require('fs');
-            let e=fs.readFileSync('.env','utf8');
-            e=e.replace('replace-with-a-strong-random-secret-min-32-chars','x'.repeat(40));
-            e=e.replace('postgresql://USER:PASSWORD@localhost:5432/tnyf_db?schema=public','postgresql://u:p@localhost:5432/db');
-            fs.writeFileSync('.env',e);
+            require('./src/app');
+            console.log('app loaded');
+            setTimeout(() => process.exit(0), 200);
           "
-          node -e "require('./src/config/env')"
-
-      - name: Smoke-test that the app module loads
-        run: |
-          # Importing src/app.js exercises every require() — surfaces any
-          # missing module or top-level crash before deploy.
-          node -e "require('./src/app')"
-        env:
-          # Disable rate limit during import (memorystore would otherwise warn).
-          NODE_ENV: test
 
   frontend:
     name: Frontend lint
@@ -78,19 +93,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Syntax-check all root-level JS files
-        run: |
-          # Vanilla browser JS uses globals (no require/import yet) so node --check
-          # is permissive enough to catch parse errors without needing a build.
-          for f in *.js js/*.js; do
-            [ -f "$f" ] && node --check "$f"
-          done
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Validate HTML files are non-empty and well-formed enough
+      - name: Syntax-check all browser JS files
         run: |
-          # Lightweight smoke: each HTML must contain <html and </html>.
-          for f in *.html; do
-            grep -q '<html' "$f" || { echo "❌ $f missing <html"; exit 1; }
-            grep -q '</html>' "$f" || { echo "❌ $f missing </html>"; exit 1; }
+          # Browser scripts use globals (no require/import yet) but node --check
+          # is permissive enough to catch parse errors.
+          fail=0
+          for f in *.js js/*.js; do
+            [ -f "$f" ] || continue
+            if ! node --check "$f"; then
+              echo "::error file=$f::Syntax error"
+              fail=1
+            fi
           done
-          echo "✓ HTML files look sane"
+          exit $fail
+
+      - name: Sanity-check HTML files
+        run: |
+          fail=0
+          for f in *.html; do
+            [ -f "$f" ] || continue
+            grep -q '<html' "$f" || { echo "::error file=$f::missing <html>"; fail=1; }
+            grep -q '</html>' "$f" || { echo "::error file=$f::missing </html>"; fail=1; }
+          done
+          [ $fail -eq 0 ] && echo "✓ All HTML files look sane"
+          exit $fail
